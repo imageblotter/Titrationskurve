@@ -1,520 +1,117 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
   <meta charset="UTF-8" />
   <title>Titrations-Simulator: Säure-Base</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- TailwindCSS CDN (UI muss unverändert bleiben) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN (UI/Diagramm muss unverändert bleiben) -->
+
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Rubik:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    /* Styling minimal halten; UI, Diagramm, Steuerung, CSV-Export bleiben erhalten */
-    .number-input { width: 8rem; }
-    /* Kein Tailwind-Build: einfache CSS-Äquivalente */
-    .section-card { background:#fff; border-radius:1rem; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.1); padding:1rem; }
-    .btn { padding:.5rem 1rem; border-radius:.75rem; box-shadow:0 1px 2px rgba(0,0,0,.06); transition: box-shadow .15s ease; }
-    .btn:hover { box-shadow:0 4px 8px rgba(0,0,0,.12); }
-    .btn-primary { background:#2563eb; color:white; }
-    .btn-secondary { background:#e2e8f0; color:#0f172a; }
-    .btn-danger { background:#dc2626; color:white; }
-    .grid-label { font-size:.875rem; color:#475569; }
-    .value-badge { display:inline-block; font-size:.75rem; padding:.25rem .5rem; border-radius:.375rem; background:#f1f5f9; }
-  </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-  <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-    <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-semibold">Säure-Base-Titrations-Simulator</h1>
-      </div>
-      <div class="flex items-center gap-3">
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Säure-Base-Titration</h1>
+      <div class="btn-group">
         <button id="simulateBtn" class="btn btn-primary">Simulieren</button>
         <button id="resetBtn" class="btn btn-secondary">Zurücksetzen</button>
         <button id="exportBtn" class="btn btn-secondary">CSV exportieren</button>
+        <button id="fullscreenBtn" class="btn btn-secondary" title="Vollbild umschalten">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+          <span style="margin-left: 0.5rem;">Vollbild</span>
+        </button>
       </div>
     </header>
 
-    <!-- Steuerung (UI unverändert, Texte ins Deutsche übersetzt) -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="section-card space-y-3">
-        <h2 class="font-semibold">System</h2>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="grid gap-1">
-            <span class="grid-label">Probe</span>
-            <select id="analyteType" class="rounded-lg border-slate-300">
+    <div class="main-grid">
+      <!-- Steuerung -->
+      <section class="card">
+        <h2>Einstellungen</h2>
+        <div class="control-grid">
+          <label class="form-group">
+            <span class="form-label">Probe</span>
+            <select id="analyteType" class="form-select">
               <option value="acid">Säure (HA)</option>
               <option value="base">Base (B)</option>
             </select>
           </label>
-          <label class="grid gap-1">
-            <span class="grid-label">Stärke der Probe</span>
-            <select id="analyteStrength" class="rounded-lg border-slate-300">
+
+          <label class="form-group">
+            <span class="form-label">Stärke</span>
+            <select id="analyteStrength" class="form-select">
               <option value="weak">Schwach</option>
               <option value="strong">Stark</option>
             </select>
           </label>
-          <label class="grid gap-1">
-            <span class="grid-label">Konzentration der Probe (mol/l)</span>
-            <input id="CaCb" type="number" step="0.0001" class="rounded-lg border-slate-300 number-input" value="0.10" />
-          </label>
-          <label class="grid gap-1">
-            <span class="grid-label">Probevolumen (mL)</span>
-            <input id="Va" type="number" step="0.01" class="rounded-lg border-slate-300 number-input" value="25.00" />
-          </label>
-          <label class="grid gap-1">
-            <span class="grid-label">Konzentration der Maßlösung (mol/l)</span>
-            <input id="Ct" type="number" step="0.0001" class="rounded-lg border-slate-300 number-input" value="0.10" />
-          </label>
-          <label class="grid gap-1">
-            <span class="grid-label">pKs (Säure) / pKb (Base)</span>
-            <input id="pKaKb" type="number" step="0.01" class="rounded-lg border-slate-300 number-input" value="4.76" />
-          </label>
-        </div>
-        <div class="flex items-center gap-3 pt-2">
-          <label class="flex items-center gap-2">
-            <input id="xUnits" type="checkbox" class="rounded border-slate-300" />
-            <span class="text-sm">x-Achse in Volumen der Maßlösung (ml)</span>
-          </label>
-          <span id="eqPointBadge" class="value-badge">Äquivalenz bei: <span id="eqValue">25.00</span> mL</span>
-        </div>
-        <p class="text-sm text-slate-600">Anfangs-pH: <span id="initialPH" class="font-mono">—</span></p>
-      </div>
 
-      <div class="section-card space-y-3 md:col-span-2">
-        <h2 class="font-semibold">Titrationskurve</h2>
-        <div class="h-[360px]">
+          <label class="form-group">
+            <span class="form-label">c(Probe) in mol/l</span>
+            <input id="CaCb" type="number" step="0.0001" class="form-input" value="0.10" />
+          </label>
+
+          <label class="form-group">
+            <span class="form-label">V(Probe) in mL</span>
+            <input id="Va" type="number" step="0.01" class="form-input" value="25.00" />
+          </label>
+
+          <label class="form-group">
+            <span class="form-label">c(Maßlösung) in mol/l</span>
+            <input id="Ct" type="number" step="0.0001" class="form-input" value="0.10" />
+          </label>
+
+          <label class="form-group">
+            <span class="form-label">pKs bzw. pKb</span>
+            <input id="pKaKb" type="number" step="0.01" class="form-input" value="4.76" />
+          </label>
+        </div>
+
+        <div class="checkbox-wrapper">
+          <input id="xUnits" type="checkbox" />
+          <label for="xUnits" class="checkbox-label">x-Achse in mL anzeigen</label>
+        </div>
+
+        <div class="info-row">
+          <span>Äquivalenz bei:</span>
+          <span class="badge"><span id="eqValue">25.00</span> mL</span>
+        </div>
+        <div class="info-row">
+          <span>Anfangs-pH:</span>
+          <span class="badge"><span id="initialPH">—</span></span>
+        </div>
+      </section>
+
+      <!-- Diagramm -->
+      <section class="card">
+        <h2>Titrationskurve</h2>
+        <div class="chart-container">
           <canvas id="titrationChart"></canvas>
         </div>
-        <div class="flex flex-wrap gap-3 text-sm text-slate-600">
-          <span>Punkte: <span id="pointCount" class="value-badge">401</span></span>
-          <span>K<sub>W</sub>: <span class="value-badge">1.0e-14</span></span>
-          <span>y-Bereich: <span class="value-badge">pH 0–14</span></span>
-          <span>x-Bereich: <span class="value-badge">0–2 Äq (oder mL)</span></span>
+        <div class="chart-stats">
+          <span class="stat-item">Punkte: <span id="pointCount" class="badge">401</span></span>
+          <span class="stat-item">K<sub>W</sub>: <span class="badge">1.0e-14</span></span>
+          <span class="stat-item">y-Bereich: <span class="badge">pH 0–14</span></span>
+          <span class="stat-item">x-Bereich: <span class="badge">0–2 Äq</span></span>
         </div>
-      </div>
-    </section>
-
+      </section>
+    </div>
   </div>
 
-  <script>
-    // ==============================
-    // Numerische Konstanten (K_W beibehalten)
-    // ==============================
-    const KW = 1e-14;
-
-    // Utilities
-    function log10(x) { return Math.log(x) / Math.LN10; }
-    function clamp(x, lo, hi) { return Math.min(Math.max(x, lo), hi); }
-
-    // ==========================================
-    // WURZELFINDER IM LOG[H+] (neu)
-    // ==========================================
-    function bisectInLogH(F, yGuess = null) {
-      let yLo = -14, yHi = 0;
-      let FLo = F(yLo), FHi = F(yHi);
-
-      if (FLo === 0) return yLo;
-      if (FHi === 0) return yHi;
-
-      let found = (FLo * FHi < 0);
-      if (!found) {
-        const scanOrder = [];
-        const N = 56; // Schritt ~0,25 pH
-        if (yGuess !== null && isFinite(yGuess)) {
-          const step = (0 - (-14)) / N;
-          const ys = Array.from({ length: N + 1 }, (_, i) => -14 + i * step);
-          ys.sort((a, b) => Math.abs(a - yGuess) - Math.abs(b - yGuess));
-          for (let k = 0; k < ys.length - 1; k++) {
-            const a = Math.min(ys[k], ys[k + 1]);
-            const b = Math.max(ys[k], ys[k + 1]);
-            scanOrder.push([a, b]);
-          }
-        } else {
-          const step = (0 - (-14)) / N;
-          for (let i = 0; i < N; i++) {
-            scanOrder.push([-14 + i * step, -14 + (i + 1) * step]);
-          }
-        }
-        for (const [a, b] of scanOrder) {
-          const Fa = F(a);
-          const Fb = F(b);
-          if (Fa === 0) return a;
-          if (Fb === 0) return b;
-          if (Fa * Fb < 0) {
-            yLo = a; FLo = Fa;
-            yHi = b; FHi = Fb;
-            found = true;
-            break;
-          }
-        }
-      }
-      if (!found) {
-        const yMid = (yLo + yHi) / 2;
-        const FyMid = F(yMid);
-        const candidates = [
-          { y: yLo, v: Math.abs(FLo) },
-          { y: yHi, v: Math.abs(FHi) },
-          { y: yMid, v: Math.abs(FyMid) },
-        ];
-        candidates.sort((a, b) => a.v - b.v);
-        return candidates[0].y;
-      }
-
-      let it = 0;
-      while ((yHi - yLo) > 1e-8 && it < 100) {
-        const ym = 0.5 * (yLo + yHi);
-        const Fm = F(ym);
-        if (Fm === 0) return ym;
-        if (FLo * Fm < 0) {
-          yHi = ym; FHi = Fm;
-        } else {
-          yLo = ym; FLo = Fm;
-        }
-        it++;
-      }
-      return 0.5 * (yLo + yHi);
-    }
-
-    // H-Klammerung in [1e-14, 1]
-    function evalWithH(fn, y) {
-      const H = Math.pow(10, clamp(y, -14, 0));
-      return fn(H);
-    }
-
-    // -----------------------------------------------------------
-    // Schwache SÄURE (HA) gegen starke BASE – Ladungsbilanz (neu)
-    // -----------------------------------------------------------
-    function pH_weakAcid_root(Ca, VaL, Ct, pKa, VaddL, yWarm = null) {
-      const Va = VaL / 1000;
-      const Vadd = VaddL / 1000;
-      const Vtot = Va + Vadd;
-      const Ka = Math.pow(10, -pKa);
-      const n_HA0 = Ca * Va;
-      const CT = n_HA0 / Vtot;
-      const Cna = (Ct * Vadd) / Vtot;
-
-      // f(H) = H + Cna - (KW/H) - (CT*Ka/(Ka + H)) = 0
-      const F = (y) => evalWithH((H) => {
-        const OH = KW / H;
-        const A = CT * Ka / (Ka + H);
-        return H + Cna - OH - A;
-      }, y);
-
-      const y = bisectInLogH(F, yWarm);
-      return -y;
-    }
-
-    // -----------------------------------------------------------
-    // Schwache BASE (B) gegen starke SÄURE – Ladungsbilanz (neu)
-    // -----------------------------------------------------------
-    function pH_weakBase_root(Cb, VaL, Ct, pKb, VaddL, yWarm = null) {
-      const Va = VaL / 1000;
-      const Vadd = VaddL / 1000;
-      const Vtot = Va + Vadd;
-      const Kb = Math.pow(10, -pKb);
-      const KaPrime = KW / Kb;
-      const n_B0 = Cb * Va;
-      const CT = n_B0 / Vtot;
-      const Ccl = (Ct * Vadd) / Vtot;
-
-      // g(H) = H + (CT*H/(H + KaPrime)) - (KW/H) - Ccl = 0
-      const G = (y) => evalWithH((H) => {
-        const OH = KW / H;
-        const BH = CT * H / (H + KaPrime);
-        return H + BH - OH - Ccl;
-      }, y);
-
-      const y = bisectInLogH(G, yWarm);
-      return -y;
-    }
-
-    // ===========================================================
-    // STARK/STARK-Logik (unverändert)
-    // ===========================================================
-    function pH_strongAcid_vs_strongBase(Ca, VaL, Ct, VaddL) {
-      const Va = VaL / 1000;
-      const Vb = VaddL / 1000;
-      const Vtot = Va + Vb;
-      const nH = Ca * Va;
-      const nOH = Ct * Vb;
-      if (nOH < nH) {
-        const H = (nH - nOH) / Vtot;
-        return -log10(H);
-      } else if (nOH > nH) {
-        const OH = (nOH - nH) / Vtot;
-        const pOH = -log10(OH);
-        return 14 - pOH;
-      } else {
-        return 7.0;
-      }
-    }
-
-    function pH_strongBase_vs_strongAcid(Cb, VaL, Ct, VaddL) {
-      const Va = VaL / 1000;
-      const VaH = VaddL / 1000;
-      const Vtot = Va + VaH;
-      const nOH = Cb * Va;
-      const nH = Ct * VaH;
-      if (nH < nOH) {
-        const OH = (nOH - nH) / Vtot;
-        const pOH = -log10(OH);
-        return 14 - pOH;
-      } else if (nH > nOH) {
-        const H = (nH - nOH) / Vtot;
-        return -log10(H);
-      } else {
-        return 7.0;
-      }
-    }
-
-    // ======================================
-    // Plugin: Gestrichelte Vertikallinie bei Äquivalenz (KORRIGIERT)
-    // ======================================
-    // Wichtig: Statt getPixelForTick (Tick-Index ≠ Datenindex) verwenden wir die tatsächliche
-    // Pixelposition des Datenpunkts aus dem Dataset-Meta. So steht die Linie genau bei der Äquivalenz-x.
-    let __eqIndex = null; // wird in simulate() gesetzt
-    const eqLinePlugin = {
-      id: 'eqLine',
-      afterDatasetsDraw(chart) {
-        if (__eqIndex == null) return;
-        const yScale = chart.scales.y;
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data || !meta.data[__eqIndex]) return;
-
-        const x = meta.data[__eqIndex].x; // exakte Pixelposition des Datenpunkts bei Äquivalenz
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.setLineDash([6, 6]);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#64748b'; // slate-500
-        ctx.beginPath();
-        ctx.moveTo(x, yScale.getPixelForValue(yScale.max));
-        ctx.lineTo(x, yScale.getPixelForValue(yScale.min));
-        ctx.stroke();
-        ctx.restore();
-      }
-    };
-    Chart.register(eqLinePlugin);
-
-    // ======================================
-    // Diagramm-Verdrahtung (UI unverändert)
-    // ======================================
-    const ctx = document.getElementById('titrationChart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Titrationskurve',
-          data: [],
-          fill: false,
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.12
-        }]
-      },
-      options: {
-        animation: false,
-        responsive: true,
-        scales: {
-          x: {
-            title: { display: true, text: 'Zugegebener Titrant (Äquivalente oder mL)' },
-          },
-          y: {
-            min: 0,
-            max: 14,
-            title: { display: true, text: 'pH' }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `pH: ${ctx.parsed.y.toFixed(4)}`
-            }
-          }
-        }
-      }
-    });
-
-    // Inputs
-    const analyteTypeEl = document.getElementById('analyteType');
-    const analyteStrengthEl = document.getElementById('analyteStrength');
-    const CaCbEl = document.getElementById('CaCb');
-    const VaEl = document.getElementById('Va');
-    const CtEl = document.getElementById('Ct');
-    const pKaKbEl = document.getElementById('pKaKb');
-    const xUnitsEl = document.getElementById('xUnits');
-    const initialPHEl = document.getElementById('initialPH');
-    const eqValueEl = document.getElementById('eqValue');
-    const pointCountEl = document.getElementById('pointCount');
-    const dataPreviewBody = document.getElementById('dataPreviewBody');
-
-    function updateEquivalenceBadge() {
-      const CaCb = parseFloat(CaCbEl.value);
-      const Va = parseFloat(VaEl.value);
-      const Ct = parseFloat(CtEl.value);
-      const Veq_mL = (CaCb * Va) / Math.max(Ct, 1e-12);
-      eqValueEl.textContent = Veq_mL.toFixed(2);
-    }
-
-    analyteTypeEl.addEventListener('change', updateEquivalenceBadge);
-    CaCbEl.addEventListener('input', updateEquivalenceBadge);
-    VaEl.addEventListener('input', updateEquivalenceBadge);
-    CtEl.addEventListener('input', updateEquivalenceBadge);
-    updateEquivalenceBadge();
-
-    // CSV-Export (unverändert; Spaltennamen auf Deutsch)
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      if (!chart.data.labels.length) return;
-      const xLabel = xUnitsEl.checked ? 'V_Zugabe (mL)' : 'Äquivalente';
-      let csv = `${xLabel},pH\n`;
-      for (let i = 0; i < chart.data.labels.length; i++) {
-        csv += `${chart.data.labels[i]},${chart.data.datasets[0].data[i]}\n`;
-      }
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'titrationskurve.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // Zurücksetzen (unverändert)
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      analyteTypeEl.value = 'acid';
-      analyteStrengthEl.value = 'weak';
-      CaCbEl.value = '0.10';
-      VaEl.value = '25.00';
-      CtEl.value = '0.10';
-      pKaKbEl.value = '4.76';
-      xUnitsEl.checked = false;
-      updateEquivalenceBadge();
-      chart.data.labels = [];
-      chart.data.datasets[0].data = [];
-      chart.update();
-      dataPreviewBody.innerHTML = '';
-      initialPHEl.textContent = '—';
-      // Äquivalenzlinie zurücksetzen
-      __eqIndex = null;
-      chart.update();
-    });
-
-    // ======================================
-    // Simulation (Root-Finder für schwache Systeme)
-    // ======================================
-    function simulate() {
-      const analyteType = analyteTypeEl.value;          // 'acid' oder 'base'
-      const analyteStrength = analyteStrengthEl.value;  // 'weak' oder 'strong'
-      const CaCb = Math.max(parseFloat(CaCbEl.value), 0);
-      const Va = Math.max(parseFloat(VaEl.value), 0);
-      const Ct = Math.max(parseFloat(CtEl.value), 0);
-      const pKaKb = parseFloat(pKaKbEl.value);
-      const usemL = xUnitsEl.checked;
-
-      // x-Gitter: 0 bis 2 Äquivalente (inkl.) oder mL-Bereich
-      const npts = 401;
-      const labels = new Array(npts);
-      const data = new Array(npts);
-      pointCountEl.textContent = npts.toString();
-
-      const Veq_mL = (CaCb * Va) / Math.max(Ct, 1e-12);
-      const maxV_mL = 2 * Veq_mL;
-
-      // Anfangs-pH anzeigen (gleicher Motor bei Vadd=0 für schwache Systeme)
-      let initialPH = NaN;
-      if (analyteStrength === 'weak') {
-        if (analyteType === 'acid') {
-          initialPH = pH_weakAcid_root(CaCb, Va, Ct, pKaKb, 0.0, -Math.max(0, 7 - pKaKb));
-        } else {
-          initialPH = pH_weakBase_root(CaCb, Va, Ct, pKaKb, 0.0, -Math.max(0, pKaKb - 7));
-        }
-      } else {
-        if (analyteType === 'acid') {
-          initialPH = pH_strongAcid_vs_strongBase(CaCb, Va, Ct, 0.0);
-        } else {
-          initialPH = pH_strongBase_vs_strongAcid(CaCb, Va, Ct, 0.0);
-        }
-      }
-      initialPHEl.textContent = isFinite(initialPH) ? initialPH.toFixed(4) : '—';
-
-      // Iteration über das Gitter; Root-Solver für schwache Systeme bei JEDEM Punkt
-      let lastY = null; // Warmstart
-      for (let i = 0; i < npts; i++) {
-        const frac = i / (npts - 1);
-        const Vadd_mL = frac * maxV_mL;
-        const eq = Vadd_mL / Math.max(Veq_mL, 1e-12);
-
-        labels[i] = usemL ? Vadd_mL.toFixed(2) : eq.toFixed(4);
-
-        let pH = 7.0;
-
-        if (analyteStrength === 'weak') {
-          if (analyteType === 'acid') {
-            const pHval = pH_weakAcid_root(CaCb, Va, Ct, pKaKb, Vadd_mL, lastY);
-            pH = clamp(pHval, 0, 14);
-            lastY = -pH;
-          } else {
-            const pHval = pH_weakBase_root(CaCb, Va, Ct, pKaKb, Vadd_mL, lastY);
-            pH = clamp(pHval, 0, 14);
-            lastY = -pH;
-          }
-        } else {
-          if (analyteType === 'acid') {
-            pH = pH_strongAcid_vs_strongBase(CaCb, Va, Ct, Vadd_mL);
-          } else {
-            pH = pH_strongBase_vs_strongAcid(CaCb, Va, Ct, Vadd_mL);
-          }
-          pH = clamp(pH, 0, 14);
-          lastY = -pH;
-        }
-
-        data[i] = pH;
-      }
-
-      // Diagramm aktualisieren
-      chart.data.labels = labels;
-      chart.data.datasets[0].data = data;
-
-      // Äquivalenz liegt bei 1,0000 Äq (xUnits aus) oder bei V_eq mL (xUnits an).
-      // Index präzise aus der Skala berechnen:
-      //   - Bei Äquivalente: x ∈ [0, 2], Äquivalenz = 1 → i = round(1/2 * (npts-1))
-      //   - Bei mL: x ∈ [0, 2·V_eq], Äquivalenz = V_eq → i = round(V_eq/(2·V_eq) * (npts-1))
-      if (xUnitsEl.checked) {
-        __eqIndex = Math.round((Veq_mL / (2 * Veq_mL)) * (npts - 1)); // = Mitte
-      } else {
-        __eqIndex = Math.round((1 / 2) * (npts - 1)); // = Mitte
-      }
-
-      chart.update();
-
-      // Datenvorschau (erste 10 Punkte)
-      dataPreviewBody.innerHTML = '';
-      for (let i = 0; i < Math.min(10, labels.length); i++) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="py-1 pr-4 font-mono">${labels[i]}</td>
-          <td class="py-1 pr-4">${xUnitsEl.checked ? 'mL' : 'Äq'}</td>
-          <td class="py-1 pr-4 font-mono">${data[i].toFixed(4)}</td>
-        `;
-        dataPreviewBody.appendChild(tr);
-      }
-    }
-
-    document.getElementById('simulateBtn').addEventListener('click', simulate);
-
-    // Erste Darstellung
-    simulate();
-
-    // ==========================
-    // Hinweise (nur Kommentare)
-    // ==========================
-    // Die gestrichelte Linie nutzt nun die Pixelposition des Datenpunkts am Äquivalenzindex
-    // (aus dem Dataset-Meta) und steht damit exakt auf dem Äquivalenzpunkt – unabhängig davon,
-    // wie die x-Achse Ticks anzeigt (mL oder Äquivalente).
-  </script>
+  <script src="script.js"></script>
 </body>
-</html>
 
+</html>
